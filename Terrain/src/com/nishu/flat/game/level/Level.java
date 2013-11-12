@@ -23,7 +23,6 @@ import static org.lwjgl.opengl.GL20.glUniform1i;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
@@ -63,14 +62,14 @@ public class Level {
 	}
 
 	private void setupShaders() {
-		Shader geomShaders = new Shader("res/landscape.vert", "res/landscape.frag");
+		Shader geomShaders = new Shader("/landscape.vert", "/landscape.frag");
 		geomProgram = new ShaderProgram(geomShaders.getvShader(), geomShaders.getfShader());
 
 		glUniform1i(glGetUniformLocation(geomProgram.getProgram(), "lookup"), 0);
 	}
 	
 	private void setupHeightMapProcedural(){
-		BufferedImage image = HeightMap.generate(2048, 2048, 2049, 255);
+		BufferedImage image = HeightMap.generate(1024, 1024, 2049, 255);
 		data = new float[image.getHeight()][image.getWidth()];
 		
 		Color c;
@@ -87,7 +86,7 @@ public class Level {
 	private void setupHeightMapFromImage() {
 		BufferedImage image;
 		try {
-			image = ImageIO.read(new File("res/heightmap.bmp"));
+			image = ImageIO.read(Level.class.getClassLoader().getResourceAsStream("heightmap.bmp"));
 			data = new float[image.getWidth()][image.getHeight()];
 
 			Color c;
