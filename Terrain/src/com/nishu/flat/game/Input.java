@@ -13,7 +13,7 @@ import com.nishu.flat.Time;
 
 public class Input {
 
-	private float yrot, xrot, lookSpeed = 0.09f, strafeSpeed = 8f;
+	private float yrot, xrot, lookSpeed = 0.09f, strafeSpeed = 80f;
 	private Vector2f mouseD;
 	private Vector3f rot, pos;
 
@@ -33,7 +33,6 @@ public class Input {
 
 		if (Keyboard.isKeyDown(Keyboard.KEY_D)) {
 			yrot = (float) (rot.y / 180 * 3.141592654f);
-			System.out.println(rot.y);
 			pos.set(pos.x -= ((float) (Math.cos(yrot)) * strafeSpeed) * Time.getDelta(), pos.y, pos.z -= ((float) (Math.sin(yrot) * strafeSpeed) * Time.getDelta()));
 		}
 		if (Keyboard.isKeyDown(Keyboard.KEY_A)) {
@@ -77,6 +76,14 @@ public class Input {
 		glRotatef(rot.x, 1, 0, 0);
 		glRotatef(rot.y, 0, 1, 0);
 		glTranslatef(pos.x, pos.y, pos.z);
+	}
+
+	public Vector3f getPos() {
+		return pos;
+	}
+
+	public void setPos(Vector3f pos) {
+		this.pos = pos;
 	}
 
 }
