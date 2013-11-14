@@ -1,23 +1,6 @@
 package com.nishu.flat.game.level;
 
-import static org.lwjgl.opengl.GL11.GL_COMPILE;
-import static org.lwjgl.opengl.GL11.GL_FILL;
-import static org.lwjgl.opengl.GL11.GL_FRONT_AND_BACK;
-import static org.lwjgl.opengl.GL11.GL_LINE;
-import static org.lwjgl.opengl.GL11.GL_POINT;
-import static org.lwjgl.opengl.GL11.GL_POLYGON_MODE;
-import static org.lwjgl.opengl.GL11.GL_TRIANGLE_STRIP;
-import static org.lwjgl.opengl.GL11.glBegin;
-import static org.lwjgl.opengl.GL11.glCallList;
-import static org.lwjgl.opengl.GL11.glEnd;
-import static org.lwjgl.opengl.GL11.glEndList;
-import static org.lwjgl.opengl.GL11.glGenLists;
-import static org.lwjgl.opengl.GL11.glGetInteger;
-import static org.lwjgl.opengl.GL11.glNewList;
-import static org.lwjgl.opengl.GL11.glPointSize;
-import static org.lwjgl.opengl.GL11.glPolygonMode;
-import static org.lwjgl.opengl.GL11.glScalef;
-import static org.lwjgl.opengl.GL11.glVertex3f;
+import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL20.glGetUniformLocation;
 import static org.lwjgl.opengl.GL20.glUniform1i;
 
@@ -30,6 +13,7 @@ import javax.imageio.ImageIO;
 import org.lwjgl.input.Keyboard;
 
 import com.nishu.flat.game.graphics.HeightMap;
+import com.nishu.flat.game.graphics.Shape;
 import com.nishu.flat.game.graphics.utilities.Texture;
 import com.nishu.shaderutils.Shader;
 import com.nishu.shaderutils.ShaderProgram;
@@ -44,7 +28,6 @@ public class Level {
 	private float[][] data;
 
 	private boolean flatten = false;
-	private boolean typeMap = false;
 
 	public Level() {
 		init();
@@ -53,12 +36,7 @@ public class Level {
 	public void init() {
 		glPointSize(2);
 		setupShaders();
-		if (typeMap) {
-			setupHeightMapProcedural();
-		}
-		if (!typeMap) {
-			setupHeightMapFromImage();
-		}
+		setupHeightMapFromImage();
 	}
 
 	private void setupShaders() {
@@ -67,13 +45,13 @@ public class Level {
 
 		glUniform1i(glGetUniformLocation(geomProgram.getProgram(), "lookup"), 0);
 	}
-	
-	private void setupHeightMapProcedural(){
-		BufferedImage image = HeightMap.generate(1024, 1024, 2049, 255);
+
+	private void setupHeightMapProcedural() {
+		BufferedImage image = HeightMap.generate(1024, 1024, 1025, 255);
 		data = new float[image.getHeight()][image.getWidth()];
-		
+
 		Color c;
-		
+
 		for (int z = 0; z < data.length; z++) {
 			for (int x = 0; x < data[z].length; x++) {
 				c = new Color(image.getRGB(z, x));
@@ -81,6 +59,21 @@ public class Level {
 			}
 		}
 		genGeom();
+	}
+
+	private void setupVoxel() {
+		BufferedImage image = HeightMap.generate(512, 512, 513, 255);
+		data = new float[image.getHeight()][image.getWidth()];
+
+		Color c;
+
+		for (int z = 0; z < data.length; z++) {
+			for (int x = 0; x < data[z].length; x++) {
+				c = new Color(image.getRGB(z, x));
+				data[z][x] = c.getRed();
+			}
+		}
+		genVoxelGeom();
 	}
 
 	private void setupHeightMapFromImage() {
@@ -102,8 +95,8 @@ public class Level {
 		}
 		genGeom();
 	}
-	
-	private void genGeom(){
+
+	private void genGeom() {
 		mapLookup = Texture.loadTexture("heightmap_lookup.png");
 		mapLookup.bind();
 
@@ -123,19 +116,39 @@ public class Level {
 		glEndList();
 	}
 
+	private void genVoxelGeom() {
+		mapLookup = Texture.loadTexture("heightmap_lookup.png");
+		mapLookup.bind();
+
+		mapList = glGenLists(1);
+
+		glNewList(mapList, GL_COMPILE);
+
+		for (int z = 0; z < data.length - 1; z++) {
+			glBegin(GL_QUADS);
+			for (int x = 0; x < data[z].length; x++) {
+				Shape.createShape(x, data[z][x], z, 1);
+				Shape.createShape(x, data[z + 1][x], z + 1, 1);
+			}
+			glEnd();
+		}
+		glEndList();
+	}
+
 	public void update() {
 		while (Keyboard.next()) {
 			if (Keyboard.getEventKeyState()) {
 				if (Keyboard.isKeyDown(Keyboard.KEY_F)) {
 					flatten = !flatten;
 				}
-				if(Keyboard.isKeyDown(Keyboard.KEY_R)){
-					typeMap = true;
+				if (Keyboard.isKeyDown(Keyboard.KEY_R)) {
 					setupHeightMapProcedural();
 				}
-				if(Keyboard.isKeyDown(Keyboard.KEY_H)){
-					typeMap = false;
+				if (Keyboard.isKeyDown(Keyboard.KEY_H)) {
 					setupHeightMapFromImage();
+				}
+				if (Keyboard.isKeyDown(Keyboard.KEY_V)) {
+					setupVoxel();
 				}
 				if (Keyboard.getEventKey() == Keyboard.KEY_P) {
 					int mode = glGetInteger(GL_POLYGON_MODE);
@@ -157,6 +170,7 @@ public class Level {
 		}
 		geomProgram.use();
 		glCallList(mapList);
+		geomProgram.release();
 	}
 
 	public void dispose() {
