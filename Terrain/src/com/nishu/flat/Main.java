@@ -7,22 +7,26 @@ import com.nishu.flat.game.Game;
 public class Main {
 
 	private Game game;
-	
+
 	public static final int WIDTH = 1280;
 	public static final int HEIGHT = 720;
 	public static final double FRAME_CAP = 60.0;
 
 	private boolean isRunning = false;
-	
+
 	public Main() {
 		isRunning = false;
 		game = new Game();
-		
+
 		init();
 	}
-	
-	private void init(){
-		game.initGL();
+
+	private void init() {
+		if (!game.render2D) {
+			game.initGL3D();
+		}else if(game.render2D){
+			game.initGL2D();
+		}
 		game.init();
 	}
 

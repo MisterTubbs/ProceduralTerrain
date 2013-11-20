@@ -7,12 +7,16 @@ import static org.lwjgl.opengl.GL20.glUniform1i;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.List;
 
 import javax.imageio.ImageIO;
 
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.util.vector.Vector2f;
 
+import com.nishu.flat.game.Game;
 import com.nishu.flat.game.graphics.HeightMap;
+import com.nishu.flat.game.graphics.MidpointMap;
 import com.nishu.flat.game.graphics.Shape;
 import com.nishu.flat.game.graphics.utilities.Texture;
 import com.nishu.shaderutils.Shader;
@@ -22,28 +26,38 @@ public class Level {
 
 	private Texture mapLookup;
 	private ShaderProgram geomProgram;
+	private Game game;
 
 	private int mapList;
 
 	private float[][] data;
+	private List<MidpointMap.Line> lines;
 
 	private boolean flatten = false;
 
-	public Level() {
+	public Level(Game game) {
+		this.game = game;
 		init();
 	}
 
 	public void init() {
 		glPointSize(2);
+		glShadeModel(GL_SMOOTH);
+		glEnable(GL_LIGHTING);
+		glEnable(GL_LIGHT0);
+		glEnable(GL_COLOR_MATERIAL);
+		glColorMaterial(GL_FRONT, GL_DIFFUSE);
 		setupShaders();
 		setupHeightMapFromImage();
 	}
 
 	private void setupShaders() {
-		Shader geomShaders = new Shader("/landscape.vert", "/landscape.frag");
-		geomProgram = new ShaderProgram(geomShaders.getvShader(), geomShaders.getfShader());
+		if (!game.render2D) {
+			Shader geomShaders = new Shader("/landscape.vert", "/landscape.frag");
+			geomProgram = new ShaderProgram(geomShaders.getvShader(), geomShaders.getfShader());
 
-		glUniform1i(glGetUniformLocation(geomProgram.getProgram(), "lookup"), 0);
+			glUniform1i(glGetUniformLocation(geomProgram.getProgram(), "lookup"), 0);
+		}
 	}
 
 	private void setupHeightMapProcedural() {
@@ -74,6 +88,11 @@ public class Level {
 			}
 		}
 		genVoxelGeom();
+	}
+	
+	private void setupMidpoint(){
+		lines = MidpointMap.newMap(1, 1, 1, 0);
+		gen2DGeom();
 	}
 
 	private void setupHeightMapFromImage() {
@@ -116,6 +135,20 @@ public class Level {
 		glEndList();
 	}
 
+	private void gen2DGeom() {
+		mapList = glGenLists(1);
+		
+		glNewList(mapList, GL_COMPILE);
+		
+		glBegin(GL_LINE);
+		for(int i = 0; i < lines.size(); i++){
+			glVertex2f(lines.get(i).start.x, lines.get(i).start.y);
+			glVertex2f(lines.get(i).end.x, lines.get(i).end.y);
+		}
+		glEnd();
+		glEndList();
+	}
+
 	private void genVoxelGeom() {
 		mapLookup = Texture.loadTexture("heightmap_lookup.png");
 		mapLookup.bind();
@@ -142,13 +175,32 @@ public class Level {
 					flatten = !flatten;
 				}
 				if (Keyboard.isKeyDown(Keyboard.KEY_R)) {
+					if(game.render2D) {
+						game.render2D = false;
+						game.initGL3D();
+					}
 					setupHeightMapProcedural();
 				}
 				if (Keyboard.isKeyDown(Keyboard.KEY_H)) {
+					if(game.render2D) {
+						game.render2D = false;
+						game.initGL3D();
+					}
 					setupHeightMapFromImage();
 				}
 				if (Keyboard.isKeyDown(Keyboard.KEY_V)) {
+					if(game.render2D) {
+						game.render2D = false;
+						game.initGL3D();
+					}
 					setupVoxel();
+				}
+				if (Keyboard.isKeyDown(Keyboard.KEY_M)) {
+					if(!game.render2D) {
+						//game.render2D = true;
+						//game.initGL2D();
+					}
+					//setupMidpoint();
 				}
 				if (Keyboard.getEventKey() == Keyboard.KEY_P) {
 					int mode = glGetInteger(GL_POLYGON_MODE);
@@ -160,6 +212,12 @@ public class Level {
 						glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 					}
 				}
+				if(Keyboard.isKeyDown(Keyboard.KEY_L)){
+					glDisable(GL_LIGHTING);
+				}
+				if(Keyboard.isKeyDown(Keyboard.KEY_K)){
+					glEnable(GL_LIGHTING);
+				}
 			}
 		}
 	}
@@ -168,9 +226,13 @@ public class Level {
 		if (flatten) {
 			glScalef(1, 0, 1);
 		}
-		geomProgram.use();
+		if (!game.render2D) {
+			geomProgram.use();
+		}
 		glCallList(mapList);
-		geomProgram.release();
+		if (!game.render2D) {
+			geomProgram.release();
+		}
 	}
 
 	public void dispose() {
